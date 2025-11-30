@@ -1,0 +1,210 @@
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Iterator;
+import java.util.Collections;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+
+public class Ride implements RideInterface {
+    private String rideName;
+    private String rideType;
+    private Employee operator;
+    private Queue<Visitor> waitingLine;
+    private LinkedList<Visitor> rideHistory;
+    private int maxRider;
+    private int numOfCycles;
+
+    public Ride() {
+        this.rideName = "";
+        this.rideType = "";
+        this.operator = null;
+        this.waitingLine = new LinkedList<>();
+        this.rideHistory = new LinkedList<>();
+        this.maxRider = 1;
+        this.numOfCycles = 0;
+    }
+
+    public Ride(String rideName, String rideType, Employee operator, int maxRider) {
+        this.rideName = rideName;
+        this.rideType = rideType;
+        this.operator = operator;
+        this.waitingLine = new LinkedList<>();
+        this.rideHistory = new LinkedList<>();
+        this.maxRider = maxRider;
+        this.numOfCycles = 0;
+    }
+
+    public String getRideName() {
+        return rideName;
+    }
+
+    public void setRideName(String rideName) {
+        this.rideName = rideName;
+    }
+
+    public String getRideType() {
+        return rideType;
+    }
+
+    public void setRideType(String rideType) {
+        this.rideType = rideType;
+    }
+
+    public Employee getOperator() {
+        return operator;
+    }
+
+    public void setOperator(Employee operator) {
+        this.operator = operator;
+    }
+
+    public int getMaxRider() {
+        return maxRider;
+    }
+
+    public void setMaxRider(int maxRider) {
+        this.maxRider = maxRider;
+    }
+
+    public int getNumOfCycles() {
+        return numOfCycles;
+    }
+
+    public void setNumOfCycles(int numOfCycles) {
+        this.numOfCycles = numOfCycles;
+    }
+
+    @Override
+    public void addVisitorToQueue(Visitor visitor) {
+        if (visitor != null) {
+            waitingLine.add(visitor);
+            System.out.println("Visitor " + visitor.getName() + " added to the queue.");
+        } else {
+            System.out.println("Cannot add null visitor to queue.");
+        }
+    }
+
+    @Override
+    public void removeVisitorFromQueue(Visitor visitor) {
+        if (waitingLine.remove(visitor)) {
+            System.out.println("Visitor " + visitor.getName() + " removed from the queue.");
+        } else {
+            System.out.println("Visitor not found in the queue.");
+        }
+    }
+
+    @Override
+    public void printQueue() {
+        System.out.println("--- Queue for " + rideName + " ---");
+        if (waitingLine.isEmpty()) {
+            System.out.println("Queue is empty.");
+        } else {
+            for (Visitor v : waitingLine) {
+                System.out.println(v);
+            }
+        }
+    }
+
+    @Override
+    public void runOneCycle() {
+        if (operator == null) {
+            System.out.println("Cannot run ride: No operator assigned.");
+            return;
+        }
+
+        if (waitingLine.isEmpty()) {
+            System.out.println("Cannot run ride: Queue is empty.");
+            return;
+        }
+
+        int ridersToTake = Math.min(maxRider, waitingLine.size());
+        System.out.println("Running cycle " + (numOfCycles + 1) + " with " + ridersToTake + " visitors.");
+
+        for (int i = 0; i < ridersToTake; i++) {
+            Visitor v = waitingLine.poll(); // Removes from queue
+            addVisitorToHistory(v); // Adds to history
+        }
+
+        numOfCycles++;
+        System.out.println("Cycle completed.");
+    }
+
+    @Override
+    public void addVisitorToHistory(Visitor visitor) {
+        if (visitor != null) {
+            rideHistory.add(visitor);
+            System.out.println("Visitor " + visitor.getName() + " added to ride history.");
+        } else {
+            System.out.println("Cannot add null visitor to history.");
+        }
+    }
+
+    @Override
+    public boolean checkVisitorFromHistory(Visitor visitor) {
+        boolean found = rideHistory.contains(visitor);
+        System.out.println("Visitor " + visitor.getName() + (found ? " is" : " is not") + " in ride history.");
+        return found;
+    }
+
+    @Override
+    public int numberOfVisitors() {
+        return rideHistory.size();
+    }
+
+    @Override
+    public void printRideHistory() {
+        System.out.println("--- Ride History for " + rideName + " ---");
+        if (rideHistory.isEmpty()) {
+            System.out.println("History is empty.");
+        } else {
+            Iterator<Visitor> it = rideHistory.iterator();
+            while (it.hasNext()) {
+                System.out.println(it.next());
+            }
+        }
+    }
+
+    public void sortRideHistory() {
+        Collections.sort(rideHistory, new VisitorComparator());
+        System.out.println("Ride history sorted.");
+    }
+
+    public void exportRideHistory(String filename) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
+            for (Visitor v : rideHistory) {
+                // Format: Name,Age,Gender,VisitorID,TicketType
+                String line = String.format("%s,%d,%s,%s,%s",
+                        v.getName(), v.getAge(), v.getGender(), v.getVisitorId(), v.getTicketType());
+                writer.write(line);
+                writer.newLine();
+            }
+            System.out.println("Ride history exported to " + filename);
+        } catch (IOException e) {
+            System.out.println("Error exporting ride history: " + e.getMessage());
+        }
+    }
+
+    public void importRideHistory(String filename) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 5) {
+                    String name = parts[0];
+                    int age = Integer.parseInt(parts[1]);
+                    String gender = parts[2];
+                    String visitorId = parts[3];
+                    String ticketType = parts[4];
+                    Visitor v = new Visitor(name, age, gender, visitorId, ticketType);
+                    addVisitorToHistory(v);
+                }
+            }
+            System.out.println("Ride history imported from " + filename);
+        } catch (IOException | NumberFormatException e) {
+            System.out.println("Error importing ride history: " + e.getMessage());
+        }
+    }
+}
